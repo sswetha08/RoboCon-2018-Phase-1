@@ -1,5 +1,5 @@
 /*
-This example shows how to read a joystick value on PS2 Controller.
+This example shows how to retrieve a button status on PS2 Controller.
 
 Function:
   readButton(button); // Read button status, it will return corresponding data
@@ -54,18 +54,29 @@ Modified:
 #include <Cytron_PS2Shield.h>
 
 Cytron_PS2Shield ps2(2, 3); // SoftwareSerial: Rx and Tx pin
-//Cytron_PS2Shield ps2; // HardwareSerial, note: 
+//Cytron_PS2Shield ps2; // HardwareSerial
+
+#define LEDPIN  13
 
 void setup()
 {
   ps2.begin(57600); // This baudrate must same with the jumper setting at PS2 shield
-  Serial.begin(57600); // Set monitor baudrate to 9600
+
+  Serial.begin(57600);
+  pinMode(LEDPIN, OUTPUT);
+  digitalWrite(LEDPIN, LOW);
 }
 
 void loop()
 {
-  // Open monitor and move left joystick in x axis
-  // Analog value will be displayed
-  Serial.println(ps2.readButton(PS2_JOYSTICK_LEFT_X_AXIS));
-  delay(1);
+  // LED on main board will light up if 'Select' button is pressed
+  if(ps2.readButton(PS2_SELECT) == 0) // 0 = pressed, 1 = released
+  {
+    digitalWrite(LEDPIN, HIGH);
+  }
+  else
+  {
+    digitalWrite(LEDPIN, LOW);
+  }
+  Serial.println(ps2.readButton(PS2_SELECT));
 }
