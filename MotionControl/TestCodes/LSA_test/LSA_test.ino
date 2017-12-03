@@ -43,8 +43,8 @@ void readLSA()
   digitalWrite(enableLSA1, HIGH);
   //delayMicroseconds(100);
   while (!(lsaSerial->available()));
-  //while (lsaSerial->available())
-  //{
+  while (lsaSerial->available())
+  {
   valLSA1 = lsaSerial->read();
   //}
   digitalWrite(enableLSA1, LOW);

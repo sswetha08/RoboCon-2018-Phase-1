@@ -19,18 +19,22 @@ int dirPins[3] = {7, 2, 5};
 int mag[3] = {};
 //Developer - @AM
 double angularDirection = 180 * (PI / 180.0);
-double defaultMotorMagnitude = 60;
+double defaultMotorMagnitude = 40;
 
 //PID
 double Kp = 1, Kd = 0;
 double previousError = 0;
 
-void initialiseLSASerialTo(HardwareSerial *serialPort, int baudRate = 38400);
+void initialiseLSASerialTo(HardwareSerial *serialPort, long baudRate);
 
 void setup() {
-  initialiseLSASerialTo(&Serial1);
-  setupLSAPinModes();
   Serial.begin(9600);
+  initialiseLSASerialTo(&Serial3, 38400);
+  setupLSAPinModes();
+  if (DEVELOPER_MODE == ON) {
+    Serial.println("Setup completed, beginngin loop");
+  }
+
 
   setupMotorPinModes();
 }
@@ -40,6 +44,7 @@ void turnMotorInDirection(int motorNumber, boolean _direction, int magnitude = 2
 void loop() {
   readLSAs();
   initialiseMotorPWMsForDirection(angularDirection, defaultMotorMagnitude);
+  applyPID();
   runMotors();
   if (DEVELOPER_MODE == ON) {
     printMotorStatus();
@@ -50,39 +55,8 @@ void loop() {
   //  turnMotorInDirection(2,HIGH);
 }
 
-//PID
 
-void applyPID() {
-  int value;
-  if (angularDirection == 0 * PI / 180.0) {
-    value = valLSA1;
-  }
-  else if (angularDirection == 180 * PI / 180.0) {
-    value = valLSA2;
-  } else if (angularDirection == 90 * PI / 180) {
-    value = valLSA3;
-  } else {
-    return; //We haven't though about this
-  }
-  int error = 35 - value;
-
-  float PIDCorrection = Kp * error + Kd * (error - previousError);
-
-  if (DEVELOPER_MODE == ON) {
-    Serial.println("PID Status");
-    Serial.print("Error = ");
-    Serial.print(error);
-    Serial.print("\tPID Correction = ");
-    Serial.print(PIDCorrection);
-  }
-
-  for (int i = 0 ; i < 3 ; i++) {
-    mag[i] += PIDCorrection;
-  }
-}
-
-
-//Developer opions
+//Developer opions  #dev
 void controlUsingSerial() {
   if (Serial.available()) {
     while (Serial.available()) {
@@ -108,45 +82,83 @@ void controlUsingSerial() {
   }
 }
 
+//#PID
+void applyPID() {
+  int value;
+  if (angularDirection == 180 * PI / 180.0) {
+    value = valLSA1;
+  } else if (angularDirection == 0 * PI / 180.0) {
+    value = valLSA2;
+  } else if (angularDirection == 90 * PI / 180) {
+    value = valLSA3;
+  } else {
+    return; //We haven't though about this
+  }
+  int error = 35 - value;
 
+  float PIDCorrection = Kp * error + Kd * (error - previousError);
 
+  if (DEVELOPER_MODE == ON) {
+    Serial.print("PID Status: ");
+    Serial.print("Set point = 35\t Value = ");
+    Serial.print(value);
+    Serial.print("\tError = ");
+    Serial.print(error);
+    Serial.print("\tPID Correction = ");
+    Serial.print(PIDCorrection);
+  }
+
+  for (int i = 0 ; i < 3 ; i++) {
+    mag[i] += PIDCorrection;
+  }
+}
 
 //#LSA
-void getLSASerialDataInto(int &variable, int LSANumber = -1, int timeout = 10);
-void getLSASerialDataInto(int &variable, int LSANumber, int timeout) {
+int getLSASerialDataInto() {
+  int variable = -1;
   //Wait for the serial to respond with a certain timeout
-  long entranceTime = millis();
-  while (!LSASerial->available()) {
-    if (millis() - entranceTime >= timeout) { //Request timeout error
-      variable = NULL;
-      Serial.print("LSA ");
-      Serial.print((LSANumber == -1) ? -1 : LSANumber);
-      Serial.print(" is not responding - Request timeout error\n");
-    }
+  while (!LSASerial->available());
+  while (LSASerial->available()) {
+    variable = LSASerial->read(); //Actual data read and fucntion returns;
+    if (variable == 255) continue;
+    else break;
   }
-  while(LSASerial->read() == 255) {
-    Serial.println("Got 255 in the serial, ignoring it...");
-  }
-  variable = LSASerial->read(); //Actual data read and fucntion returns;
-  return;
+  return variable;
 }
+
 
 void readLSAs() {
   clearLSADataBuffer();
-
+  Serial.print("In the ReadLSA");
   digitalWrite(enableLSA1, HIGH);
-  getLSASerialDataInto(valLSA1, 1);
+  while (!(LSASerial->available())) ;
+  while (LSASerial->available()) {
+    valLSA1 = LSASerial->read(); //Actual data read and fucntion returns;
+    if (valLSA1 == 255) continue;
+    else break;
+  }
   digitalWrite(enableLSA1, LOW);
 
+  clearLSADataBuffer();
   digitalWrite(enableLSA2, HIGH);
-  getLSASerialDataInto(valLSA2, 2);
+  while (!(LSASerial->available()));
+  while (LSASerial->available()) {
+    valLSA2 = LSASerial->read(); //Actual data read and fucntion returns;
+    if (valLSA2 == 255) continue;
+    else break;
+  }
   digitalWrite(enableLSA2, LOW);
 
   digitalWrite(enableLSA3, HIGH);
-  getLSASerialDataInto(valLSA3, 3);
+  while (!(LSASerial->available()));
+  while (LSASerial->available()) {
+    valLSA3 = LSASerial->read(); //Actual data read and fucntion returns;
+    if (valLSA3 == 255) continue;
+    else break;
+  }
   digitalWrite(enableLSA3, LOW);
 
-  Serial.print("The LSA values are : ");
+  Serial.print("\nThe LSA values are : ");
   Serial.print(valLSA1);
   Serial.print(", ");
   Serial.print(valLSA2);
@@ -171,9 +183,15 @@ void setupLSAPinModes() {
   digitalWrite(enableLSA3, LOW);
 }
 
-void initialiseLSASerialTo(HardwareSerial *serialPort, int baudRate) {
+void initialiseLSASerialTo(HardwareSerial *serialPort, long baudRate) {
   LSASerial = serialPort;
   LSASerial->begin(baudRate);
+  if (DEVELOPER_MODE == ON) {
+    Serial.print("\nInitialised LSA to Serial");
+    //Serial.print(serialPort);
+    Serial.print(", with baudrate ");
+    Serial.println(baudRate);
+  }
 }
 
 
@@ -184,9 +202,13 @@ void printMotorStatus() {
     Serial.print(i);
     Serial.print(") ");
     Serial.print(mag[i]);
-    Serial.print("\t");
+    Serial.print("   ");
   }
-
+  Serial.print("D,M/S = ");
+  Serial.print(angularDirection * 180.0 / PI);
+  Serial.print(", ");
+  Serial.print(defaultMotorMagnitude);
+  Serial.println();
 }
 
 void setupMotorPinModes() {
