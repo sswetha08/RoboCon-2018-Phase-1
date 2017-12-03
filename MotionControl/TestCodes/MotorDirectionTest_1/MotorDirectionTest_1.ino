@@ -21,6 +21,10 @@ int mag[3] = {};
 double angularDirection = 180 * (PI / 180.0);
 double defaultMotorMagnitude = 60;
 
+//PID
+double Kp = 1, Kd = 0;
+double previousError = 0;
+
 void initialiseLSASerialTo(HardwareSerial *serialPort, int baudRate = 38400);
 
 void setup() {
@@ -34,29 +38,69 @@ void setup() {
 void turnMotorInDirection(int motorNumber, boolean _direction, int magnitude = 20);
 
 void loop() {
-  ///readLSAs();
+  readLSAs();
   initialiseMotorPWMsForDirection(angularDirection, defaultMotorMagnitude);
   runMotors();
   if (DEVELOPER_MODE == ON) {
     printMotorStatus();
-    motionControlUsingSerial();
+    controlUsingSerial();
   }
   //  turnMotorInDirection(0,HIGH);
   //  turnMotorInDirection(1,HIGH);
   //  turnMotorInDirection(2,HIGH);
 }
 
-void motionControlUsingSerial() {
+//PID
+
+void applyPID() {
+  int value;
+  if (angularDirection == 0 * PI / 180.0) {
+    value = valLSA1;
+  }
+  else if (angularDirection == 180 * PI / 180.0) {
+    value = valLSA2;
+  } else if (angularDirection == 90 * PI / 180) {
+    value = valLSA3;
+  } else {
+    return; //We haven't though about this
+  }
+  int error = 35 - value;
+
+  float PIDCorrection = Kp * error + Kd * (error - previousError);
+
+  if (DEVELOPER_MODE == ON) {
+    Serial.println("PID Status");
+    Serial.print("Error = ");
+    Serial.print(error);
+    Serial.print("\tPID Correction = ");
+    Serial.print(PIDCorrection);
+  }
+
+  for (int i = 0 ; i < 3 ; i++) {
+    mag[i] += PIDCorrection;
+  }
+}
+
+
+//Developer opions
+void controlUsingSerial() {
   if (Serial.available()) {
     while (Serial.available()) {
       char c = Serial.read();
       switch (c) {
-        case 'D':
+        case 'D': //Direction of motion of bot in degrees
           angularDirection = (Serial.parseInt()) * PI / 180.0;
           break;
-        case 'M': case 'S':
+        case 'M': case 'S': //Motor speed
           defaultMotorMagnitude = Serial.parseInt();
           break;
+        case 'K':
+          c = Serial.read();
+          if (c == 'p') { //Set Kp
+            Kp = Serial.parseInt();
+          } else if (c == 'd') {  //Set Kd
+            Kd = Serial.parseInt();
+          }
         default:
           break;
       }
@@ -64,25 +108,42 @@ void motionControlUsingSerial() {
   }
 }
 
+
+
+
+//#LSA
+void getLSASerialDataInto(int &variable, int LSANumber = -1, int timeout = 10);
+void getLSASerialDataInto(int &variable, int LSANumber, int timeout) {
+  //Wait for the serial to respond with a certain timeout
+  long entranceTime = millis();
+  while (!LSASerial->available()) {
+    if (millis() - entranceTime >= timeout) { //Request timeout error
+      variable = NULL;
+      Serial.print("LSA ");
+      Serial.print((LSANumber == -1) ? -1 : LSANumber);
+      Serial.print(" is not responding - Request timeout error\n");
+    }
+  }
+  while(LSASerial->read() == 255) {
+    Serial.println("Got 255 in the serial, ignoring it...");
+  }
+  variable = LSASerial->read(); //Actual data read and fucntion returns;
+  return;
+}
+
 void readLSAs() {
   clearLSADataBuffer();
 
   digitalWrite(enableLSA1, HIGH);
-  while (!LSASerial->available()); //Wait to receive anything;
-  LSASerial->read();  //Reading junk here
-  valLSA1 = LSASerial->read();
+  getLSASerialDataInto(valLSA1, 1);
   digitalWrite(enableLSA1, LOW);
 
   digitalWrite(enableLSA2, HIGH);
-  while (!LSASerial->available()); //Wait to receive anything;
-  LSASerial->read();
-  valLSA2 = LSASerial->read();
+  getLSASerialDataInto(valLSA2, 2);
   digitalWrite(enableLSA2, LOW);
 
   digitalWrite(enableLSA3, HIGH);
-  while (!LSASerial->available()); //Wait to receive anything;
-  LSASerial->read();
-  valLSA3 = LSASerial->read();
+  getLSASerialDataInto(valLSA3, 3);
   digitalWrite(enableLSA3, LOW);
 
   Serial.print("The LSA values are : ");
@@ -91,7 +152,7 @@ void readLSAs() {
   Serial.print(valLSA2);
   Serial.print(", ");
   Serial.print(valLSA3);
-  Serial.print(", ");
+  Serial.print("\n");
 }
 
 void clearLSADataBuffer() {
@@ -115,6 +176,8 @@ void initialiseLSASerialTo(HardwareSerial *serialPort, int baudRate) {
   LSASerial->begin(baudRate);
 }
 
+
+//#Motor
 void printMotorStatus() {
   Serial.print("\nMotor status ");
   for (int i = 0 ; i < 3; i++) {
