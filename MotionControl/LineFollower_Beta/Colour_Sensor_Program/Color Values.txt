@@ -1,0 +1,70 @@
+Manual Bot Zone -
+
+Frequencies : R = 60
+	      G = 73 
+	      B = 147
+	     
+Approx Value : Hex = #4fff34
+         	      R = 79
+		      G = 255
+		      B = 52	 	
+	
+Complementary 1 : Hex = #ff8c34  		
+		  R = 255
+		  G = 140
+		  B = 52
+
+Complementary 2 : Hex = #e434ff
+		  R = 228
+		  G = 52
+		  B = 255
+
+Throwing Zone -
+
+Frequencies : R = 147
+	      G = 149
+	      B = 176
+
+Approx Value : Hex = #25873a
+               R = 37
+	       G = 135
+	       B = 58	 	
+
+New Accepted Value : Hex = #177cfe 
+		     R = 23
+		     G = 124
+		     B = 254
+	
+Complementary 1 : Hex = #875b25
+		  R = 135
+		  G = 91
+		  B = 37
+
+Complementary 2 : Hex = #87257d
+		  R = 135
+		  G = 37
+		  B = 125
+
+White Line -
+
+Frequencies : R = 35
+	      G = 48
+	      B = 51
+
+Approx Value : Hex = #ffffff
+               R = 255
+	       G = 255
+	       B = 255
+
+Complementary : Hex = #ffffff
+                R = 255
+	        G = 255
+	        B = 255
+
+Golden Yellow -
+
+    Orignial = #f1ff17 
+	       #9817fe 
+	       #177cfe (23,124,254)
+  	 				  	 
+	
