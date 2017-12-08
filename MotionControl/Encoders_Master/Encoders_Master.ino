@@ -1,4 +1,4 @@
-#include <I2C_Anything.h>
+
 #include<Wire.h>
 
 //Motor Pins
@@ -62,7 +62,9 @@ void loop()
       oldEncoderValue[i - 1] = encoderValue[i - 1];
       oldTime[i - 1] = Time[i - 1];
       Wire.beginTransmission (i); // i is the slave address (interrupts @Avneesh Mishra)
-      I2C_readAnything(encoderValue[i - 1]);
+      byte b = Wire.read();
+      byte b2 = Wire.read();
+      encoderValue[i-1] = (b<<8) | b2;
       Time[i] = millis();
       Serial.print(encoderValue[i - 1]);
     }
@@ -87,7 +89,7 @@ void calcw()
   botTime = millis();
   for (int i = 0; i < 3; i++)
   {
-    w[i] = ((encoderValue[i] - oldEncoderValue[i]) / (Time[i] - oldTime[i])) * (360 / 400);   //w = dQ/dT : But, does it generate 400 pulses in a second though. And, the scaling factor is probably wrong. Make it 2 * PI / 400
+    w[i] = ((encoderValue[i] - oldEncoderValue[i]) / (Time[i] - oldTime[i])) * (2*3.14/ 400);   //w = dQ/dT 
     realVel[i] = w[i] * r;  //v = w * r (r -> radius of wheel)
   }
 
