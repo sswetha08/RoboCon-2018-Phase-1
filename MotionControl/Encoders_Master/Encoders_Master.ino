@@ -2,15 +2,15 @@
 #include<Wire.h>
 
 //Motor Pins
-int pwmPin[3] = {1, 3, 5};    
+int pwmPin[3] = {1, 3, 5};
 int dirPin[3] = {2, 6, 7};
 
- //Bot direction
- int dir = 0, dirOpp =1;
+//Bot direction
+int dir = 0, dirOpp = 1;
 
 //PID
-int kp[3] = {0,0,0};
-int kd[3] = {0,0,0};
+int kp[3] = {0, 0, 0};
+int kd[3] = {0, 0, 0};
 float p_error[3];
 float d_error[3];
 float pid_mag[3];
@@ -33,12 +33,12 @@ long oldEncoderValue[3] = {0};
 
 // Bot speed nd distance specifics
 float convert = 0; // Find conversion factor
-float velSet,botVel;
+float velSet, botVel;
 float pwmSet = 60; // Desired pwm
-int mag[3] ={0};
-float distance =0;
+int mag[3] = {0};
+float distance = 0;
 int ang = 0;
-int setDistance =0; // Distance need to be traversed
+int setDistance = 0; // Distance need to be traversed
 int r = 0.75; //wheel radius in metres
 
 
@@ -50,21 +50,21 @@ void setup()
   Wire.begin();   //Start the I2C communication bus
   Serial.begin(9600);
 }
-void loop() 
+void loop()
 {
-   moveMotors(); // Drives all motors
+  moveMotors(); // Drives all motors  &Suggestion : Have this at the end of the loop, we want effectss after computation :  @ Avneesh Mishra
 
   // Read from all controllers
   for (int i = 1; i < 4; i++)
   {
     while (Wire.available())
-    { 
+    {
       oldEncoderValue[i - 1] = encoderValue[i - 1];
       oldTime[i - 1] = Time[i - 1];
-      Wire.beginTransmission (i); // i is the slave address
-      I2C_readAnything(encoderValue[i - 1]); 
+      Wire.beginTransmission (i); // i is the slave address (interrupts @Avneesh Mishra)
+      I2C_readAnything(encoderValue[i - 1]);
       Time[i] = millis();
-      Serial.print(encoderValue[i - 1]);   
+      Serial.print(encoderValue[i - 1]);
     }
     // All encoder values received
   }
@@ -76,7 +76,7 @@ void loop()
   }
   for (int i = 0; i < 3; i++)
   {
-    mag[i] += pid_mag[i];    
+    mag[i] += pid_mag[i];
   }
 
 }
@@ -87,36 +87,36 @@ void calcw()
   botTime = millis();
   for (int i = 0; i < 3; i++)
   {
-    w[i] = ((encoderValue[i] - oldEncoderValue[i]) / (Time[i] - oldTime[i])) * (360 / 400); 
-    realVel[i] = w[i] * r;  //v = w * r
+    w[i] = ((encoderValue[i] - oldEncoderValue[i]) / (Time[i] - oldTime[i])) * (360 / 400);   //w = dQ/dT : But, does it generate 400 pulses in a second though. And, the scaling factor is probably wrong. Make it 2 * PI / 400
+    realVel[i] = w[i] * r;  //v = w * r (r -> radius of wheel)
   }
-  
+
   // velocity of the bot #Check... @Avneesh Mishra
-  botVel = sqrt(sq(realVel[0]) + sq(realVel[1]) + sq(realVel[2]) - (realVel[0] * realVel[1] + realVel[1] * realVel[2] + realVel[2] * realVel[0])); // where is angle ? 
-  
-  //The distance bot has moved = v*dt 
+  botVel = sqrt(sq(realVel[0]) + sq(realVel[1]) + sq(realVel[2]) - (realVel[0] * realVel[1] + realVel[1] * realVel[2] + realVel[2] * realVel[0])); // where is angle ?
+
+  //The distance bot has moved = v*dt
   distance += botVel * (botTime - oldBotTime);
 
-  if (distance == setDistance) 
-  { 
-    clearMag(); 
-    moveMotors(); 
+  if (distance == setDistance)
+  {
+    clearMag();
+    moveMotors();
     //Transfer control to throwing mechanism!
   }
 
-  else if (distance>=setDistance) //if bot has overshot
+  else if (distance >= setDistance) //if bot has overshot
   {
-    int temp = dir; // change direction
-    dir = dirOpp;
-    dirOpp =temp;
-    setDistance = distance - setDistance; // reset distance 
-    distance =0;
+    int temp = dir; // change direction (swap dir and dirOpp)
+    dir = dirOpp;   
+    dirOpp = temp;
+    setDistance = distance - setDistance; // reset distance
+    distance = 0;
   }
   oldBotTime = botTime;
 }
 
 int do_pid(int i)         //Apply PID correction for the ith motor
-{ 
+{
 
   p_error[i] = idealVel[i] - realVel[i];
   d_error[i] = p_error[i] - prev_error[i];
@@ -152,7 +152,7 @@ void moveMotors()
   for (int i = 0; i < 3; i++)
   {
     analogWrite(pwmPin[i], abs(mag[i]));
-    digitalWrite(dirPin[i], (mag[i] > 0) ? dir: dirOpp); // LOW:HIGH (Intially dir =0, dirOpp=1)
+    digitalWrite(dirPin[i], (mag[i] > 0) ? dir : dirOpp); // LOW:HIGH (Intially dir =0, dirOpp=1)
   }
 }
 
