@@ -1,7 +1,13 @@
 #include <openGLCD.h>
-#define button
+#define button1
+#define button2
+ int buttonstate1;
+ byte c[2];
+ byte y;
+ int buttonstate2;
 void setup() {
-  pinMode(button, INPUT);
+  pinMode(button1, INPUT);
+  pinMode(button2, INPUT);
   // put your setup code here, to run once:
   GLCD.Init();
   GLCD.SelectFont(System5x7);
@@ -14,14 +20,13 @@ void setup() {
 void loop() {
   // put your main code here, to run repeatedly:
   GLCD.CursorTo(0, 1);
-  int buttonstate = digitalRead(button);
-  if (buttonstate == HIGH) {
+  buttonstate1 = digitalRead(button1);
+  if (buttonstate1 == HIGH) {
     Serial2.write("#bm");
     // tO READ ENCODER VALUES
     for (int i = 0; i < 4; i++) {
       if (Serial2.available())
       {
-        byte c[2];
         Serial2.readBytes(c, 2);
         value[i] = (c[0] << 8) | c[1];
         GLCD.print(i);
@@ -30,8 +35,12 @@ void loop() {
       }
     }
     //to read imu values
-    byte y = Serial2.read();
+    y = Serial2.read();
     GLCD.println(y);
+  }
+    buttonstate2 = digitalRead(button2);
+    if(buttonstate2==HIGH){
     Serial2.write("#l");
+    }
   }
 }
