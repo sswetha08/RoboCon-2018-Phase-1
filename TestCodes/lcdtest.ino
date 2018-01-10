@@ -8,6 +8,7 @@ void setup() {
 
   GLCD.println("Start test bench....");
   Serial.begin(9600);
+  Serial2.begin(9600);
 }
 
 void loop() {
@@ -15,13 +16,13 @@ void loop() {
   GLCD.CursorTo(0, 1);
   int buttonstate = digitalRead(button);
   if (buttonstate == HIGH) {
-    Serial.write("#bm");
+    Serial2.write("#bm");
     // tO READ ENCODER VALUES
     for (int i = 0; i < 4; i++) {
-      if (Serial.available())
+      if (Serial2.available())
       {
         byte c[2];
-        Serial.readBytes(c, 2);
+        Serial2.readBytes(c, 2);
         value[i] = (c[0] << 8) | c[1];
         GLCD.print(i);
         GLCD.println("Encoder value :");
@@ -29,8 +30,8 @@ void loop() {
       }
     }
     //to read imu values
-    byte y = Serial.read();
+    byte y = Serial2.read();
     GLCD.println(y);
-    Serial.write("#l");
+    Serial2.write("#l");
   }
 }
