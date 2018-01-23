@@ -15,9 +15,15 @@ class ThreeWheelBotMotors {
     bool DEBUGGER_MODE;
     HardwareSerial *debuggerSerial;
     void setMotorPWM(int number, float PWM) {
-      if (PWM < MAX_MAG) {
+      if (PWM > 0) {
+        digitalWrite(MOTOR_DIR_PINS[number], LOW);  // Rotate inwards
+      }
+      else if (PWM < 0) {
+        digitalWrite(MOTOR_DIR_PINS[number], HIGH); // Rotate outwards
+      }
+      if (abs(PWM) < MAX_MAG) {
         MOTOR_MAG[number] = PWM;
-        analogWrite(MOTOR_MAG_PINS[number], (int)PWM);
+        analogWrite(MOTOR_MAG_PINS[number], abs((int)PWM));
       } else if (DEBUGGER_MODE == true) {
         debuggerSerial->print("\nMotor index ");
         debuggerSerial->print(number);
@@ -105,7 +111,7 @@ class ThreeWheelBotMotors {
     void moveAtWithAngle(int PWM, int ANGLE) {
       moveAtWithAngle_DEG(PWM, ANGLE);
     }
-    void moveAtWithAngle_RAD(int PWM, int ANGLE) {
+    void moveAtWithAngle_RAD(float PWM, float ANGLE) {
       /*
          Derived DCM Equations
          Equations :->
@@ -125,21 +131,69 @@ class ThreeWheelBotMotors {
       setMotorPWM(2, -0.33333333 * PWM * sin(ANGLE) + 0.57735027 * PWM * cos(ANGLE));
     }
     void moveAtWithAngle_DEG(int PWM, int ANGLE_DEG) {
-      moveAtWithAngle_DEG(PWM, float(ANGLE_DEG) * PI / 180.0);
+      moveAtWithAngle_RAD(PWM, (float(ANGLE_DEG)/180.0)*PI);
     }
 
+    void printMotorStatus() {
+      Serial.print("\nMotor 1 : ");
+      Serial.print(MOTOR_MAG[0]);
+      Serial.print("\nMotor 2 : ");
+      Serial.print(MOTOR_MAG[1]);
+      Serial.print("\nMotor 3 : ");
+      Serial.println(MOTOR_MAG[2]);
+    }
+
+    void setMotorStatus(int M_NO, int PWM, int DIR) {
+      digitalWrite(MOTOR_DIR_PINS[M_NO], DIR);
+      analogWrite(MOTOR_MAG_PINS[M_NO], PWM);
+      Serial.print("Pin ");
+      Serial.print(MOTOR_MAG_PINS[M_NO]);
+      Serial.print(" at ");
+      Serial.print(PWM);
+      Serial.print(" - dir pin ");
+      Serial.print(MOTOR_DIR_PINS[M_NO]);
+      Serial.print(" at ");
+      Serial.println(DIR);
+    }
 };
 
 
 ThreeWheelBotMotors motors;
 
-int MotorPWMs[3] = {1, 2, 3};
-int MotorDIRs[3] = {10, 11, 12};
+int MotorPWMs[3] = {8, 9, 10};
+int MotorDIRs[3] = {5, 6, 3};
 void setup() {
   Serial.begin(9600);
   motors.attachDebuggerSerial(&Serial);
   motors.attachPWM_DIRPins(MotorPWMs, MotorDIRs);
+  motors.setMaxPWM(100);
 }
+int CURRENT_ANGLE = -60, CURRENT_PWM = 50;
 void loop() {
+  while (Serial.available()) {
+    char c = Serial.read();
+    switch (c) {
+      case 'p': case 'P':
+        CURRENT_PWM = Serial.parseInt();
+        break;
+      case 'a': case 'A':
+        CURRENT_ANGLE = Serial.parseInt();
+        break;
+      default: break;
+    }
+  }
+  /*
+    Serial.print("PWM - ");
+    Serial.print(CURRENT_PWM);
+    Serial.print(" ANGLE = ");
+    Serial.println(CURRENT_ANGLE);
+  */
+  motors.moveAtWithAngle(CURRENT_PWM, CURRENT_ANGLE);
+ // motors.setMotorStatus(2, 40, 1);
+  motors.printMotorStatus();
+  /*
+    digitalWrite(7, 0);
+    analogWrite(10, 100);
+  */
 }
 
