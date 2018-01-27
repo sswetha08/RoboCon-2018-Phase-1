@@ -223,6 +223,7 @@ void loop() {
     Serial.print(" ANGLE = ");
     Serial.println(CURRENT_ANGLE);
   */
+  // Move Bot 
   // motors.moveAtWithAngle(CURRENT_PWM, CURRENT_ANGLE);
   /*
   // Rotate bot clockwise
