@@ -190,7 +190,6 @@ class ThreeWheelBotMotors {
     }
 };
 
-
 ThreeWheelBotMotors motors;
 
 // Motor properties
@@ -206,13 +205,13 @@ void setup() {
 }
 int CURRENT_ANGLE = -90, CURRENT_PWM = 80;
 void loop() {
-  while (Serial.available()) {
+  while (Serial.available()) {  // For Debugger mode
     char c = Serial.read();
     switch (c) {
-      case 'p': case 'P':
+      case 'p': case 'P': // Edit PWM
         CURRENT_PWM = Serial.parseInt();
         break;
-      case 'a': case 'A':
+      case 'a': case 'A': // Edit Angle
         CURRENT_ANGLE = Serial.parseInt();
         break;
       default: break;
@@ -226,7 +225,7 @@ void loop() {
   */
   // motors.moveAtWithAngle(CURRENT_PWM, CURRENT_ANGLE);
   /*
-  Rotate bot clockwise
+  // Rotate bot clockwise
   motors.setMotorStatus(2, 40, 1);
   motors.setMotorStatus(1, 40, 1);
   motors.setMotorStatus(0, 40, 1);
