@@ -193,6 +193,7 @@ class ThreeWheelBotMotors {
 
 ThreeWheelBotMotors motors;
 
+// Motor properties
 int MotorPWMs[3] = {2, 5, 4};
 int MotorDIRs[3] = {32, 30, 28};
 boolean CW_DIRS[3] = {HIGH, HIGH, HIGH};  // The voltages levels we need to give to pins to rotate in a clockwise manner [M0,M1,M2]
