@@ -193,9 +193,9 @@ class ThreeWheelBotMotors {
 ThreeWheelBotMotors motors;
 
 // Motor properties
-int MotorPWMs[3] = {2, 5, 4};
-int MotorDIRs[3] = {32, 30, 28};
-boolean CW_DIRS[3] = {HIGH, HIGH, HIGH};  // The voltages levels we need to give to pins to rotate in a clockwise manner [M0,M1,M2]
+int MotorPWMs[3] = {6,8,5};   //6,7,5,8
+int MotorDIRs[3] = {45,47,43};//45,49,43,47
+boolean CW_DIRS[3] = {HIGH, LOW, HIGH};  // The voltages levels we need to give to pins to rotate in a clockwise manner [M0,M1,M2]
 
 void setup() {
   Serial.begin(9600);
@@ -203,7 +203,8 @@ void setup() {
   motors.attachPWM_DIRPins(MotorPWMs, MotorDIRs, CW_DIRS);
   motors.setMaxPWM(100);
 }
-int CURRENT_ANGLE = -90, CURRENT_PWM = 80;
+
+int CURRENT_ANGLE = 180, CURRENT_PWM = 50;
 void loop() {
   while (Serial.available()) {  // For Debugger mode
     char c = Serial.read();
@@ -223,14 +224,15 @@ void loop() {
     Serial.print(" ANGLE = ");
     Serial.println(CURRENT_ANGLE);
   */
-  // Move Bot 
-  // motors.moveAtWithAngle(CURRENT_PWM, CURRENT_ANGLE);
+  // Move Bot
+  motors.moveAtWithAngle(CURRENT_PWM, CURRENT_ANGLE);
   /*
   // Rotate bot clockwise
   motors.setMotorStatus(2, 40, 1);
   motors.setMotorStatus(1, 40, 1);
   motors.setMotorStatus(0, 40, 1);
   */
+  // motors.setMotorStatus(1,100,0);
   motors.printMotorStatus();
   /*
     digitalWrite(7, 0);
