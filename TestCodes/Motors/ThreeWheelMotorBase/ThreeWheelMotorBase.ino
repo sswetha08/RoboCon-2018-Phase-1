@@ -12,15 +12,15 @@ class ThreeWheelBotMotors {
     int MAX_MAG;      // Maximum PWM cap on motors
     int MOTOR_MAG_PINS[3];  // Motor Magnitude Pins
     int MOTOR_DIR_PINS[3];  // Motor Direction Pins
-    boolean MOTOR_CW[3];    // Voltage levels to rotate the motors CW
+    boolean MOTOR_CCW[3];    // Voltage levels to rotate the motors CCW : If viewed from top, the bot will rotate counter clockwise with these voltage levels given to the motor
     bool DEBUGGER_MODE;     // Debugger mode (ON/OFF)
     HardwareSerial *debuggerSerial;
     void setMotorPWM(int number, float PWM) { // Motor 'number' and 'PWM' value (set motor index 'number' to PWM) (it does a MAX_MAG test)
       if (PWM > 0) {
-        digitalWrite(MOTOR_DIR_PINS[number], MOTOR_CW[number]);  // Rotate inwards : Support CW Direction
+        digitalWrite(MOTOR_DIR_PINS[number], MOTOR_CCW[number]);  // Rotate inwards : Support CCW Direction
       }
       else if (PWM < 0) {
-        digitalWrite(MOTOR_DIR_PINS[number], !MOTOR_CW[number]); // Rotate outwards : CCW Direction
+        digitalWrite(MOTOR_DIR_PINS[number], !MOTOR_CCW[number]); // Rotate outwards : CW Direction
       }
       if (abs(PWM) < MAX_MAG) {
         MOTOR_MAG[number] = PWM;  // Set MOROT_MAG to PWM
@@ -36,22 +36,22 @@ class ThreeWheelBotMotors {
     }
   public:
     // Attach Pins
-    void attachPWM_DIRPins(int PWM_PINS[], int DIR_PINS[], boolean MOTOR_CW_PINS[]) { // PWM_PINS, DIR_PINS, CW_DIR_PINS
+    void attachPWM_DIRPins(int PWM_PINS[], int DIR_PINS[], boolean MOTOR_CCW_PINS[]) { // PWM_PINS, DIR_PINS, CW_DIR_PINS
       attachPWMPins(PWM_PINS[0], PWM_PINS[1], PWM_PINS[2]);
       attachDIRPins(DIR_PINS[0], DIR_PINS[1], DIR_PINS[2]);
-      attachCWDirs(MOTOR_CW_PINS[0],MOTOR_CW_PINS[1],MOTOR_CW_PINS[2]);
+      attachCCWDirs(MOTOR_CCW_PINS[0],MOTOR_CCW_PINS[1],MOTOR_CCW_PINS[2]);
     }
-    void attachCWDirs(boolean CW0, boolean CW1, boolean CW2) { // Attach CW0, CW1, CW2 (for Motor 0,1,2)
-      MOTOR_CW[0] = CW0;
-      MOTOR_CW[1] = CW1;
-      MOTOR_CW[2] = CW2;
+    void attachCCWDirs(boolean CCW0, boolean CCW1, boolean CCW2) { // Attach CCW0, CCW1, CCW2 (for Motor 0,1,2)
+      MOTOR_CCW[0] = CCW0;
+      MOTOR_CCW[1] = CCW1;
+      MOTOR_CCW[2] = CCW2;
       if (DEBUGGER_MODE) {
         debuggerSerial->print("\nMotor directions ");
         for (int i = 0; i < 3; i++) {
-          if (MOTOR_CW[i] == HIGH) {
-            debuggerSerial->print("CW\t");
-          } else {
+          if (MOTOR_CCW[i] == HIGH) {
             debuggerSerial->print("CCW\t");
+          } else {
+            debuggerSerial->print("CW\t");
           }
         }
         debuggerSerial->println();
@@ -145,14 +145,14 @@ class ThreeWheelBotMotors {
       moveAtWithAngle_DEG(PWM, ANGLE);
     }
     void moveAtWithAngle_RAD(float PWM, float ANGLE) {  // Move at 'PWM' keeping angle 'ANGLE' with vertical (ANGLE IN RADIANS)
-      /*
+      /*    **IMPORTANT DCM Equations
          Derived DCM Equations
          Equations :->
         [
         1, 1, 1;
         1, -cos(60), -cos(60);
         0, -sin(60), sin(60)
-        ] * [v1;v2;v3] = [0; V Sin(THETA) ; V Cos(THETA)]
+        ] * [v1 ;v2;v3] = [0; V Sin(THETA) ; V Cos(THETA)]
         ----- 0 degrees is the wheel 1 (index 0), angle taken counter clockwise
          WARNING : DO NOT CHANGE IF NOT UNDERSTOOD
          V1 = 0.6666666 * (PWM) * sin(ANGLE)
@@ -175,7 +175,6 @@ class ThreeWheelBotMotors {
       Serial.print("\nMotor 3 : ");
       Serial.println(MOTOR_MAG[2]);
     }
-
     void setMotorStatus(int M_NO, int PWM, int DIR) { // Set motor M_NO to PWM and direction (voltage) as DIR
       digitalWrite(MOTOR_DIR_PINS[M_NO], DIR);
       analogWrite(MOTOR_MAG_PINS[M_NO], PWM);
@@ -193,18 +192,20 @@ class ThreeWheelBotMotors {
 ThreeWheelBotMotors motors;
 
 // Motor properties
-int MotorPWMs[3] = {6,8,5};   //6,7,5,8
-int MotorDIRs[3] = {45,47,43};//45,49,43,47
-boolean CW_DIRS[3] = {HIGH, LOW, HIGH};  // The voltages levels we need to give to pins to rotate in a clockwise manner [M0,M1,M2]
+int MotorPWMs[3] = {6,7,5};   //6,7,5,8
+int MotorDIRs[3] = {45,49,43};//45,49,43,47
+boolean CCW_DIRS[3] = {HIGH, HIGH, HIGH};  // The voltages levels we need to give to pins to rotate in a counter clockwise manner [M0,M1,M2]
+
+HardwareSerial * LSA_Serial;
 
 void setup() {
   Serial.begin(9600);
   motors.attachDebuggerSerial(&Serial);
-  motors.attachPWM_DIRPins(MotorPWMs, MotorDIRs, CW_DIRS);
+  motors.attachPWM_DIRPins(MotorPWMs, MotorDIRs, CCW_DIRS);
   motors.setMaxPWM(100);
 }
 
-int CURRENT_ANGLE = 180, CURRENT_PWM = 50;
+int CURRENT_ANGLE = 0, CURRENT_PWM = 150;
 void loop() {
   while (Serial.available()) {  // For Debugger mode
     char c = Serial.read();
