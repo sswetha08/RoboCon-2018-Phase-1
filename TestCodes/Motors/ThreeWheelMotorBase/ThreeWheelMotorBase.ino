@@ -1,12 +1,18 @@
+#define DEBUGGER true
+
 class ThreeWheelBotMotors {
     /*
        Important functions :
-     * * attachPWM_DIRPins(PWMs[], DIRs[])
+     * * attachPWM_DIRPins(PWMs[], DIRs[], CCWs[])
      * * moveAtWithAngle(int PWM, int ANGLE_DEGREES)
      * * increasePWMs(value (s))
      * * attachDebuggerSerial(&Serial)
      * * enableDebugger()
      * * disableDebugger()
+     * * addOmega(int omegaValue)
+     * * setOmega(int omegaValue)
+     * * applyXAxisMotionCorrection(int LSA_Values[3]) // Applies X Axis PID
+
     */
     int MOTOR_MAG[3]; // Current Magnitude of Motors
     int MAX_MAG;      // Maximum PWM cap on motors
@@ -144,6 +150,7 @@ class ThreeWheelBotMotors {
     void moveAtWithAngle(int PWM, int ANGLE) {  // Move at 'PWM' keeping angle 'ANGLE' with vertical (DEFAULT ANGLE IN DEGREES)
       moveAtWithAngle_DEG(PWM, ANGLE);
     }
+    float BOT_Vel, BOT_Motion_Angle;
     void moveAtWithAngle_RAD(float PWM, float ANGLE) {  // Move at 'PWM' keeping angle 'ANGLE' with vertical (ANGLE IN RADIANS)
       /*    **IMPORTANT DCM Equations
          Derived DCM Equations
@@ -153,7 +160,13 @@ class ThreeWheelBotMotors {
         1, -cos(60), -cos(60);
         0, -sin(60), sin(60)
         ] * [v1 ;v2;v3] = [0; V Sin(THETA) ; V Cos(THETA)]
-        ----- 0 degrees is the wheel 1 (index 0), angle taken counter clockwise
+        The inverse of the matrix is given by
+        [
+        0.3333333333, 0.6666666666, 0;
+        0.3333333333, -0.3333333333, -0.5773502691;
+        0.3333333333, -0.3333333333, 0.5773502691
+        ]
+        ----- 0 degrees is the wheel 1 (index 0), angle taken counter clockwise, then wheel 2 and then wheel 3
          WARNING : DO NOT CHANGE IF NOT UNDERSTOOD
          V1 = 0.6666666 * (PWM) * sin(ANGLE)
          V2 = -0.3333333 * (PWM) * sin(ANGLE) - 0.57735027 * (PWM) * cos(ANGLE)
@@ -162,9 +175,23 @@ class ThreeWheelBotMotors {
       setMotorPWM(0, 0.6666666 * PWM * sin(ANGLE));
       setMotorPWM(1, -0.33333333 * PWM * sin(ANGLE) - 0.57735027 * PWM * cos(ANGLE));
       setMotorPWM(2, -0.33333333 * PWM * sin(ANGLE) + 0.57735027 * PWM * cos(ANGLE));
+      BOT_Vel = PWM;
+      BOT_Motion_Angle = ANGLE;
     }
     void moveAtWithAngle_DEG(int PWM, int ANGLE_DEG) { // Move at 'PWM' keeping angle 'ANGLE' with vertical (ANGLE IN DEGREES)
       moveAtWithAngle_RAD(PWM, (float(ANGLE_DEG)/180.0)*PI);
+    }
+
+    void setOmega(int omegaValue) {
+      setMotorPWM(0, omegaValue/3.0);
+      setMotorPWM(1, omegaValue/3.0);
+      setMotorPWM(2, omegaValue/3.0);
+    }
+
+    void addOmega(int omegaValue) {
+      setMotorPWM(0, MOTOR_MAG_PINS[0] + omegaValue/3.0);
+      setMotorPWM(1, MOTOR_MAG_PINS[1] + omegaValue/3.0);
+      setMotorPWM(2, MOTOR_MAG_PINS[2] + omegaValue/3.0);
     }
 
     void printMotorStatus() { // Print Motor PWMs to the serial (debuggerSerial)
@@ -187,6 +214,40 @@ class ThreeWheelBotMotors {
       Serial.print(" at ");
       Serial.println(DIR);
     }
+    // Values fine tuned for 150 Magnitude
+    int KpFWD = 2, KdFWD = 0.6, KpBWD = 1.7, KdBWD = 0.5;
+    void setFWD_PDparameters(int newKpFWD, int newKdFWD) {
+      KpFWD = newKpFWD;
+      KdFWD = newKdFWD;
+    }
+    void setBWD_PDparameters(int newKpBWD, int newKdBWD) {
+      KpBWD = newKpBWD;
+      KdBWD = newKdBWD;
+    }
+    int errorFWD = 0, prevErrorFWD = 0, errorBWD = 0, prevErrorBWD = 0;
+    void applyXAxisMotionCorrection(int LSA_Values[]) {
+      int PWMCorrection;
+      if (LSA_Values[0] != 255) {
+        // 0 degree wheel PID
+        errorFWD = 35 - LSA_Values[0];
+        PWMCorrection = KpFWD * errorFWD - KdFWD * (errorFWD - prevErrorFWD); // FWD PWM Correction
+        setMotorPWM(0, MOTOR_MAG[0] + PWMCorrection);
+        prevErrorFWD = errorFWD;
+      } else {
+        setMotorPWM(0, MOTOR_MAG[0]);
+      }
+      if (LSA_Values[1] != 255) {
+        // 180 degree wheels PID
+        errorBWD = 35 - LSA_Values[1];
+        PWMCorrection = KpBWD * errorBWD - KdBWD * (errorBWD - prevErrorBWD);
+        setMotorPWM(1, MOTOR_MAG[1] + PWMCorrection);
+        setMotorPWM(2, MOTOR_MAG[2] + PWMCorrection);
+        prevErrorBWD = errorBWD;
+      } else {
+        setMotorPWM(1, MOTOR_MAG[1]);
+        setMotorPWM(2, MOTOR_MAG[2]);
+      }
+    }
 };
 
 ThreeWheelBotMotors motors;
@@ -196,17 +257,42 @@ int MotorPWMs[3] = {6,7,5};   //6,7,5,8
 int MotorDIRs[3] = {45,49,43};//45,49,43,47
 boolean CCW_DIRS[3] = {HIGH, HIGH, HIGH};  // The voltages levels we need to give to pins to rotate in a counter clockwise manner [M0,M1,M2]
 
-HardwareSerial * LSA_Serial;
+int LSA_PINs[3] = {A13,A15,A14};  // LSA 1,2 and 3
+int LSA_Values_Raw[3] = {0,0,0};  // The raw value LSAs get on the analog pins (10 bit)
+int LSA_Values[3] = {0,0,0};      // The Actual - Scaled down LSA values
+int lastLSA_Values[3] = {0,0,0};  // The last (NON 255 - Legit) LSA Value
 
 void setup() {
+  // Basic serial
   Serial.begin(9600);
-  motors.attachDebuggerSerial(&Serial);
+  // Motors
+  motors.attachDebuggerSerial(&Serial); // Give debugger outputs to Serial
+  if (DEBUGGER) {
+    motors.enableDebugger();
+  } else {
+    motors.disableDebugger();
+  }
   motors.attachPWM_DIRPins(MotorPWMs, MotorDIRs, CCW_DIRS);
-  motors.setMaxPWM(100);
+  motors.setMaxPWM(255);
+  // LSAs
+  for (int i = 0 ; i < 3 ; i++) { // Configure LSA analog input pins
+    pinMode(LSA_PINs[i], INPUT);
+    if (DEBUGGER) {
+      Serial.print("LSA ");
+      Serial.print(i);
+      Serial.print(" recognised at ");
+      Serial.println(LSA_PINs[i]);
+    }
+  }
+
+  motors.setFWD_PDparameters(3.8,0.7);
+  motors.setBWD_PDparameters(2,0.9);
 }
 
-int CURRENT_ANGLE = 0, CURRENT_PWM = 150;
+int CURRENT_ANGLE = 0, CURRENT_PWM = 200;
 void loop() {
+  // Update LSA values
+  GrabLSAValues();
   while (Serial.available()) {  // For Debugger mode
     char c = Serial.read();
     switch (c) {
@@ -219,24 +305,29 @@ void loop() {
       default: break;
     }
   }
-  /*
-    Serial.print("PWM - ");
-    Serial.print(CURRENT_PWM);
-    Serial.print(" ANGLE = ");
-    Serial.println(CURRENT_ANGLE);
-  */
   // Move Bot
   motors.moveAtWithAngle(CURRENT_PWM, CURRENT_ANGLE);
-  /*
-  // Rotate bot clockwise
-  motors.setMotorStatus(2, 40, 1);
-  motors.setMotorStatus(1, 40, 1);
-  motors.setMotorStatus(0, 40, 1);
-  */
-  // motors.setMotorStatus(1,100,0);
   motors.printMotorStatus();
-  /*
-    digitalWrite(7, 0);
-    analogWrite(10, 100);
-  */
+  motors.applyXAxisMotionCorrection(LSA_Values);
+}
+
+void GrabLSAValues() {  // Get values from the LSAs
+// Currently, we're reading values from the analog ports
+  for (int i = 0; i < 3 ; i++) {
+    LSA_Values_Raw[i] = analogRead(LSA_PINs[i]);
+    if (LSA_Values_Raw[i] <= 900) {
+      LSA_Values[i] = map(LSA_Values_Raw[i],0,900,0,70);
+    } else {  // 255 case (out of line)
+      LSA_Values[i] = 255;
+    }
+    if (DEBUGGER) {
+      Serial.print("LSA ");
+      Serial.print(i);
+      Serial.print(" : ");
+      Serial.print(LSA_Values_Raw[i]);
+      Serial.print("(");
+      Serial.print(LSA_Values[i]);
+      Serial.print(")");
+    }
+  }
 }

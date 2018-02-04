@@ -1,6 +1,8 @@
-#include<SoftwareSerial.h>
+// #include<SoftwareSerial.h>
 
-SoftwareSerial IMU(6,5);  //Rx, Tx
+// SoftwareSerial IMU(6,5);  //Rx, Tx
+
+#define IMU Serial1
 
 void setup() {
   Serial.begin(57600);
@@ -17,4 +19,3 @@ void loop() {
     }
   }
 }
-
