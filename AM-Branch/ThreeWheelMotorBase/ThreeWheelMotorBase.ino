@@ -1,4 +1,5 @@
 #define DEBUGGER true
+#define Serial_BAUD_RATE 9600
 
 class ThreeWheelBotMotors {
     /*
@@ -11,6 +12,9 @@ class ThreeWheelBotMotors {
      * * enableDebugger()
      * * disableDebugger()
      * * setMotorStatus(MOTOR_NUMBER, PWM, DIRECTION) ------ DEBUGGER MODE ONLY
+     * * setFWD_PDparameters(KP,KD)
+     * * setBWD_PDparameters(KP,KD)
+     * * applyXAxisMotionCorrection(int LSA_Values[], int lastLSA_Values[])
     */
     int MOTOR_MAG[3]; // Current Magnitude of Motors
     int MAX_MAG;      // Maximum PWM cap on motors
@@ -200,6 +204,35 @@ class ThreeWheelBotMotors {
         Serial.println(DIR);
       }
     }
+
+    // Line Following correction
+    // Values fine tuned for 150 Magnitude
+    float KpFWD = 2, KdFWD = 0.6, KpBWD = 1.7, KdBWD = 0.5;
+    void setFWD_PDparameters(float newKpFWD, float newKdFWD) {  // Set PD parameters for PD control (in forward 0 degree motion)
+      KpFWD = newKpFWD;
+      KdFWD = newKdFWD;
+    }
+    void setBWD_PDparameters(float newKpBWD, float newKdBWD) {  // Set PD parameters for PD control (in backward, 180 degree motion)
+      KpBWD = newKpBWD;
+      KdBWD = newKdBWD;
+    }
+    int errorFWD = 0, prevErrorFWD = 0, errorBWD = 0, prevErrorBWD = 0;
+    void applyXAxisMotionCorrection(int LSA_Values[], int lastLSA_Values[]) {
+      int PWMCorrection = 0;
+      // 0 degree wheel PID
+      errorFWD = 35 - LSA_Values[0];
+      PWMCorrection = KpFWD * errorFWD - KdFWD * (errorFWD - prevErrorFWD); // FWD PWM Correction
+      setMotorPWM(0, MOTOR_MAG[0] + PWMCorrection);
+      prevErrorFWD = errorFWD;
+
+      PWMCorrection = 0;
+      // 180 degree wheels PID
+      errorBWD = 35 - LSA_Values[1];
+      PWMCorrection = KpBWD * errorBWD - KdBWD * (errorBWD - prevErrorBWD);
+      setMotorPWM(1, MOTOR_MAG[1] + PWMCorrection);
+      setMotorPWM(2, MOTOR_MAG[2] + PWMCorrection);
+      prevErrorBWD = errorBWD;
+    }
 };
 
 ThreeWheelBotMotors motors;
@@ -209,27 +242,25 @@ int MotorPWMs[3] = {6,7,5};   //6,7,5,8
 int MotorDIRs[3] = {45,49,43};//45,49,43,47
 boolean CCW_DIRS[3] = {HIGH, HIGH, HIGH};  // The voltages levels we need to give to pins to rotate in a counter clockwise manner [M0,M1,M2]
 
-int LSA_PINs[3] = {A13,A15,A14};  // LSA 1,2 and 3
-int LSA_Values_Raw[3] = {0,0,0};  // The raw value LSAs get on the analog pins (10 bit)
-int LSA_Values[3] = {0,0,0};      // The Actual - Scaled down LSA values
+int LSA_PINs[3] = {A13,A15,A14};  // LSA 1,2 and 3 of the bot
+int LSA_SerialSelectPins[3] = {22,24,26};
+/*
+  LSA Tristate buffer pins : 22, 24, 26
+*/
+HardwareSerial LSASerial = Serial2;
+#define LSASerial_BAUD_RATE 38400
+int LSA_Values[3] = {0,0,0};      // The Actual - Scaled down LSA values (0 to 70 and then 255)
 int lastLSA_Values[3] = {0,0,0};  // The last (NON 255 - Legit) LSA Value
+int LSA_Values_Raw[3] = {0,0,0};  // The raw value LSAs get on the analog pins (10 bit)
 
 void setup() {
-  // Basic serial
-  Serial.begin(9600);
-  // Motors
-  motors.attachDebuggerSerial(&Serial); // Give debugger outputs to Serial
-  if (DEBUGGER) {
-    motors.enableDebugger();
-    } else {
-      motors.disableDebugger();
-    }
-  motors.attachPWM_DIRPins(MotorPWMs, MotorDIRs, CCW_DIRS);
-  motors.setMaxPWM(255);
-
+  Serial.begin(Serial_BAUD_RATE);
   // LSAs
+  LSASerial.begin(LSASerial_BAUD_RATE);
   for (int i = 0 ; i < 3 ; i++) { // Configure LSA analog input pins
     pinMode(LSA_PINs[i], INPUT);
+    pinMode(LSA_SerialSelectPins[i], OUTPUT);
+    digitalWrite(LSA_SerialSelectPins[i], LOW);
     if (DEBUGGER) {
       Serial.print("LSA ");
       Serial.print(i);
@@ -237,57 +268,85 @@ void setup() {
       Serial.println(LSA_PINs[i]);
     }
   }
+  // Motors
+  motors.attachDebuggerSerial(&Serial);
+  if (DEBUGGER) {
+    motors.enableDebugger();
+  } else {
+    motors.disableDebugger();
+  }
+  motors.attachPWM_DIRPins(MotorPWMs, MotorDIRs, CCW_DIRS);
+  motors.setMaxPWM(255);
+    // Motor PD parameters for forward and backward motion
+    /*
+      Magnitude : KpFWD,KdFWD; KpBWD, KdBWD (150 - 400)
+      150 : 1.4,0.1;0.7,0.2
+      250 : 2.5,0.7;1.5,0.2
+      400 : 3.8,1.4;2.0,0.6
 
-  motors.setFWD_PDparameters(3.8,0.8);
-  motors.setBWD_PDparameters(2,0.9);
+    */
+  motors.setFWD_PDparameters(3.8,1.4);
+  motors.setBWD_PDparameters(2,0.6);
 }
 
-int CURRENT_ANGLE = 0, CURRENT_PWM = 200;
+int CURRENT_ANGLE = 0, CURRENT_PWM = 400;
 void loop() {
-  // Update LSA values
-  GrabLSAValues();
   while (Serial.available()) {  // For Debugger mode
     char c = Serial.read();
     switch (c) {
       case 'p': case 'P': // Edit PWM
-      CURRENT_PWM = Serial.parseInt();
-      break;
+        CURRENT_PWM = Serial.parseInt();
+        break;
       case 'a': case 'A': // Edit Angle
-      CURRENT_ANGLE = Serial.parseInt();
-      break;
+        CURRENT_ANGLE = Serial.parseInt();
+        break;
       default: break;
     }
   }
+  // Grab all 3 LSA values
+  GrabLSAValues();
+  DisplayLSAValues();
   // Move Bot
-  /*
-  motors.setMotorStatus(0,50,1);
-  motors.setMotorStatus(1,50,1);
-  motors.setMotorStatus(2,50,1);
-  */
-  motors.moveAtWithAngle(CURRENT_PWM,CURRENT_ANGLE);
+
+
+  motors.moveAtWithAngle(CURRENT_PWM, CURRENT_ANGLE);
   motors.applyXAxisMotionCorrection(LSA_Values,lastLSA_Values);
+  // motors.setMotorStatus(0,0,0);
   motors.printMotorStatus();
-  // motors.applyXAxisMotionCorrection(LSA_Values);
 }
 
-void GrabLSAValues() {  // Get values from the LSAs
+// LSA Codes
+void GrabLSAValues_Analog() {  // Get values from the LSAs
   // Currently, we're reading values from the analog ports
   for (int i = 0; i < 3 ; i++) {
     LSA_Values_Raw[i] = analogRead(LSA_PINs[i]);
     if (LSA_Values_Raw[i] <= 900) {
-      LSA_Values[i] = map(LSA_Values_Raw[i],0,900,0,70);
-      lastLSA_Values[i] = LSA_Values[i];
-      } else {  // 255 case (out of line)
+      LSA_Values[i] = map(LSA_Values_Raw[i],0,900,0,70);  // Mapping of the LSA values
+      lastLSA_Values[i] = LSA_Values[i];  // Here is where we get the last LSA values
+    } else {  // 255 case (out of line or no line found)
         LSA_Values[i] = 255;
-      }
-      if (DEBUGGER) {
-        Serial.print("LSA ");
-        Serial.print(i);
-        Serial.print(" : ");
-        Serial.print(LSA_Values_Raw[i]);
-        Serial.print("(");
-        Serial.print(LSA_Values[i]);
-        Serial.print(")");
-      }
     }
   }
+}
+void DisplayLSAValues() {
+  for (int i = 0 ; i < 3; i++) {
+    if (DEBUGGER) {
+      Serial.print("\nLSA ");
+      Serial.print(i);
+      Serial.print(" : ");
+      Serial.print(LSA_Values_Raw[i]);
+      Serial.print("(");
+      Serial.print(LSA_Values[i]);
+      Serial.print(")");
+    }
+  }
+}
+void GrabLSAValues_Serial() {
+  digitalWrite(LSA_SerialSelectPins[0], HIGH);
+  if (DEBUGGER) {
+    Serial.println(LSASerial.read());
+  }
+}
+void GrabLSAValues() {
+  GrabLSAValues_Analog();
+}

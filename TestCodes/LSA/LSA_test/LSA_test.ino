@@ -1,7 +1,7 @@
 //LSA
-int enableLSA1 = 11;
-int enableLSA2 = 12;
-int enableLSA3 = 13;
+int enableLSA1 = 22;
+int enableLSA2 = 24;
+int enableLSA3 = 26;
 int valLSA1 = 0;
 int valLSA2 = 0;
 int valLSA3 = 0;
@@ -41,12 +41,12 @@ void readLSA()
   Serial.print("Values : ");
   clearLSA();
   digitalWrite(enableLSA1, HIGH);
-  //delayMicroseconds(100);
+  delayMicroseconds(100);
   while (!(lsaSerial->available()));
   while (lsaSerial->available())
   {
   valLSA1 = lsaSerial->read();
-  //}
+  }
   digitalWrite(enableLSA1, LOW);
 
   //delayMicroseconds(100);
