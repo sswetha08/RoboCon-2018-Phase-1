@@ -1,0 +1,9 @@
+State 1 - Manual Start Zone to White line to be followed
+State 2 - Forward to Junction 1 Manual Zone
+State 3 - Rotation at the Junction 1 Manual Zone
+State 4 - Forward till Red Line Throwing Zone 1 for Gripping
+State 5 - Forward till Throwing Zone Junction 
+State 6 - Rotation for throwing
+State 7 - Rotation for Gripping
+
+
