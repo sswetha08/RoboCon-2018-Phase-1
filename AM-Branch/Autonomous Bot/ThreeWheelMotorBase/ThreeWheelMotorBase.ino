@@ -232,7 +232,7 @@ class ThreeWheelBotMotors {
       setMotorPWM(1, MOTOR_MAG[1] + PWMCorrection);
       setMotorPWM(2, MOTOR_MAG[2] + PWMCorrection);
       prevErrorBWD = errorBWD;
-    }
+    }    
 };
 
 ThreeWheelBotMotors motors;
@@ -308,11 +308,12 @@ void loop() {
   DisplayLSAValues();
   // Move Bot
 
-
+  /*
   motors.moveAtWithAngle(CURRENT_PWM, CURRENT_ANGLE);
   motors.applyXAxisMotionCorrection(LSA_Values,lastLSA_Values);
   // motors.setMotorStatus(0,0,0);
   motors.printMotorStatus();
+  */
 }
 
 // LSA Codes
