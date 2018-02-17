@@ -35,9 +35,11 @@ void setup() {
   retractFlap();
   openArmGripper();
   digitalWrite(MOTOR_DIR_PIN, HIGH);
-  analogWrite(MOTOR_PWM_PIN, 30);
 }
 
+void resetEncoderCount() {
+  encoderCount = 0;
+}
 void printEncoderTicks() {
   if (DEBUGGER_MODE) {
     Serial.print("\nEncoder Ticks : ");
@@ -74,7 +76,8 @@ void PerformFlapServoDeployAction() { // Perform the receiving action
   // Deploy flap servo
   deployFlap();
   // Reduce the PWM of the arm
-  analogWrite(MOTOR_PWM_PIN, 15);
+  resetEncoderCount();
+  analogWrite(MOTOR_PWM_PIN, 10);
 }
 void deployFlap() {
   if (DEBUGGER_MODE) {
@@ -98,8 +101,7 @@ void closeArmGripper() {  // Close the arm gripper
 void loop() {
   if (tempEncoderCount != encoderCount) {
     if (DEBUGGER_MODE) {
-      Serial.print("Encoder : ");
-      Serial.println(encoderCount);
+      printEncoderTicks();
     }
     tempEncoderCount = encoderCount;
   }
@@ -107,28 +109,43 @@ void loop() {
     char c = Serial.read();
     int PWM;
     boolean dir;
+    int del;
     boolean shuttlecockTransferComplete;
     switch(c) {
-      case 'r':case 'R':
+      case 'r':case 'R':  // Only the deploy position
         PerformFlapServoDeployAction();
-        openArmGripper(); // Wait for receiving shuttlecock
+        openArmGripper();
+        resetEncoderCount();
       break;
-      case 'o':case 'O':
-      if (DEBUGGER_MODE) {
-        Serial.println("Opening the arm gripper");
-      }
+      case 't':case 'T':  // Throwing point set
+        del = Serial.parseInt();  // The count threshold
+        if (DEBUGGER_MODE) {
+          Serial.print("Encoder and gripper threshold set to ");
+          Serial.println(del);
+        }
+        while(encoderCount < del) {
+          printEncoderTicks();
+        }
         openArmGripper();
       break;
-      case 'c':case 'C':
-      if (DEBUGGER_MODE) {
-        Serial.println("Closing the arm gripper");
-      }
+      case 'o':case 'O':  // Open gripper arm
+        if (DEBUGGER_MODE) {
+          Serial.println("Opening the arm gripper");
+        }
+        openArmGripper();
+      break;
+      case 'c':case 'C':  // Close gripper arm
+        if (DEBUGGER_MODE) {
+          Serial.println("Closing the arm gripper");
+        }
         closeArmGripper();
       break;
       case 'm':case 'M':  // Motor actuate : DEFAULT (throwing direction)
         if (DEBUGGER_MODE) {
           Serial.println("Enter the PWM : ");
         }
+        retractFlap();
+        // az1500m110t2730z100m0
         PWM = Serial.parseInt();
         digitalWrite(MOTOR_DIR_PIN, MOTOR_THROW_VOLTAGE_LEVEL);
         analogWrite(MOTOR_PWM_PIN, PWM);
@@ -149,13 +166,20 @@ void loop() {
         }
         digitalWrite(MOTOR_DIR_PIN, dir);
       break;
-      case 'f':case 'F':
+      case 'f':case 'F':  // Retract flap
         retractFlap();
       break;
-      case 'g':case 'G':
+      case 'g':case 'G':  // Deploy flap servo
         deployFlap();
       break;
-      case 'e':case 'E': case 'a': case 'A': // Perform the entire process
+      case 'z':case 'Z':  // Delay for the specified millis
+        if (DEBUGGER_MODE) {
+          Serial.println("Enter the amount of milliseconds for delay : ");
+        }
+        del = Serial.parseInt();
+        delay(del);
+      break;
+      case 'e':case 'E': case 'a': case 'A': // Perform the entire process of receiving
         PerformFlapServoDeployAction();
         openArmGripper();
         shuttlecockTransferComplete = false;
@@ -174,13 +198,13 @@ void loop() {
               }
               closeArmGripper();
               retractFlap();
-              encoderCount = 0;
+              resetEncoderCount();
               shuttlecockTransferComplete = true;
               break;
             }
             if (digitalRead(PHOTOELECTRIC_SENSOR_PIN) == LOW) {
               if (DEBUGGER_MODE) {
-                Serial.println("Lost shuttlecock, LOL retrying...");
+                Serial.println("Lost shuttlecock, retrying...");
               }
               break;
             }
@@ -189,6 +213,7 @@ void loop() {
         if (DEBUGGER_MODE) {
           Serial.println("Transfer completed");
         }
+        resetEncoderCount(); // Reference encoder count
       break;
       default:
       if (DEBUGGER_MODE) {
