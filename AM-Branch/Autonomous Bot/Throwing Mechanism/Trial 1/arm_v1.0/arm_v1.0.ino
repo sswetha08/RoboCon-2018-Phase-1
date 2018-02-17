@@ -13,6 +13,8 @@ void setup()
 {
   Serial.begin(9600);
   btserial.begin(38400);
+  pinMode(13, OUTPUT);
+  digitalWrite(13, LOW);
   ser.attach(9);
   ser.write(open_pos);
   delay(1000);
@@ -22,29 +24,28 @@ void setup()
 
 void new_ser()
 {
-    Serial.println("WORKED!");
     flag=1;
 }
 
 void loop()
 {
  if (flag == 1) {
-  btserial.write('b'); 
+  btserial.write('b');
   flag = 0;
  }
  if(btserial.available())
  {
  char c = btserial.read();
+ Serial.println(c);
  if(c=='x')
  {
   ser.write(open_pos);
+  digitalWrite(13, HIGH);
  }
  else if (c=='y')
  {
   ser.write(close_pos);
+  digitalWrite(13, LOW);
  }
  }
 }
-  
-  
-
