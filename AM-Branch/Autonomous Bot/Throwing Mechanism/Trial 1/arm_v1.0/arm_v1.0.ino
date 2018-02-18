@@ -3,8 +3,8 @@
 SoftwareSerial btserial(11, 10); //RX,TX
 Servo ser;
 int p_sens = 0;  //Digitalpin 2
-int close_pos = 90 ;
-int open_pos = 20;
+int close_pos = 60 ;
+int open_pos = 10;
 int flag = 0;
 
 
