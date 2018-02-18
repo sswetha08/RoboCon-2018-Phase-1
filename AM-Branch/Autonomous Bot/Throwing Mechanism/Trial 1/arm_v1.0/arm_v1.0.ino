@@ -3,11 +3,9 @@
 SoftwareSerial btserial(11, 10); //RX,TX
 Servo ser;
 int p_sens = 0;  //Digitalpin 2
-int close_pos = 60 ;
-int open_pos = 10;
+int close_pos = 125;
+int open_pos = 40;
 int flag = 0;
-
-
 
 void setup()
 {
@@ -30,7 +28,7 @@ void new_ser()
 
 void loop()
 {
-  if (flag == 1) { 
+  if (flag == 1) {
     btserial.write('b');
     flag = 0;
   }

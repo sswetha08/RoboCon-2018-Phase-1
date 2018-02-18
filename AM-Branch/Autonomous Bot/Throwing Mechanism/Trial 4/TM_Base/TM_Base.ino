@@ -1,16 +1,23 @@
+// Encoders initialisation
 #define ENCODER_A 2
 #define ENCODER_B 3
+// Photoelectric Sensor
 #define PHOTOELECTRIC_SENSOR_PIN 4
+// BT Module
 #define BTSerial Serial3
 #define BTSerial_BAUD_RATE 38400
+// Flap servo
 #define FLAP_SERVO_PIN 10
 #define FLAP_DEPLOY_ANGLE 10
 #define FLAP_RETRACT_ANGLE 90
+// Throwing mechanism motor
 #define MOTOR_PWM_PIN 9
 #define MOTOR_DIR_PIN 8
 #define MOTOR_THROW_VOLTAGE_LEVEL HIGH
-#define ARM_THRESHOLD_TIME_LIMIT 60
+// Thresholder (for the Photoelectric sensor)
+#define ARM_THRESHOLD_TIME_LIMIT 40
 
+// True or False
 #define DEBUGGER_MODE true
 
 
@@ -53,9 +60,9 @@ void encoderTicked() {
     encoderCount++;
   }
 }
-void PerformFlapServoDeployAction() { // Perform the receiving action
+void PerformFlapServoDeployAction() { // Perform the receiving action (not the gripping)
   digitalWrite(MOTOR_DIR_PIN, !MOTOR_THROW_VOLTAGE_LEVEL);  // Reverse the direction. Rotate in the CCW when seen from LSA 3 side
-  analogWrite(MOTOR_PWM_PIN, 25); // Rotate
+  analogWrite(MOTOR_PWM_PIN, 40); // Rotate (in the opposite direction)
   while(digitalRead(PHOTOELECTRIC_SENSOR_PIN) == LOW) {
     if (DEBUGGER_MODE) {
       Serial.println("Waiting for the sensor to detect arm's long end");
@@ -77,7 +84,7 @@ void PerformFlapServoDeployAction() { // Perform the receiving action
   deployFlap();
   // Reduce the PWM of the arm
   resetEncoderCount();
-  analogWrite(MOTOR_PWM_PIN, 10);
+  analogWrite(MOTOR_PWM_PIN, 10); // This is the holding required so that the arm doesn't displace of it's position while receiving shuttlecock
 }
 void deployFlap() {
   if (DEBUGGER_MODE) {
@@ -145,7 +152,6 @@ void loop() {
           Serial.println("Enter the PWM : ");
         }
         retractFlap();
-        // az1500m110t2730z100m0
         PWM = Serial.parseInt();
         digitalWrite(MOTOR_DIR_PIN, MOTOR_THROW_VOLTAGE_LEVEL);
         analogWrite(MOTOR_PWM_PIN, PWM);
@@ -181,11 +187,14 @@ void loop() {
       break;
       case 'e':case 'E': case 'a': case 'A': // Perform the entire process of receiving
         PerformFlapServoDeployAction();
-        openArmGripper();
+        openArmGripper(); // Ready to receive shuttlecock
+        if (DEBUGGER_MODE) {
+          Serial.println("Ready to receive shuttlecock");
+        }
         shuttlecockTransferComplete = false;
         while(!shuttlecockTransferComplete) { // Wait for the transfer to be successfull
           for (int i = 1 ; i <= ARM_THRESHOLD_TIME_LIMIT; i++) {
-            delayMicroseconds(10); // 1ms low
+            delayMicroseconds(10); // wait duration
             if (DEBUGGER_MODE) {
               Serial.print("Duration : ");
               Serial.print(i);
@@ -196,9 +205,9 @@ void loop() {
               if (DEBUGGER_MODE) {
                 Serial.println("Shuttlecock loaded for deploy");
               }
-              closeArmGripper();
-              retractFlap();
-              resetEncoderCount();
+              closeArmGripper();  // Just close the gripper, the flap is still deployed
+              resetEncoderCount();  // Set reference position
+              analogWrite(MOTOR_PWM_PIN, 0);  // Stop the motor
               shuttlecockTransferComplete = true;
               break;
             }
@@ -213,7 +222,6 @@ void loop() {
         if (DEBUGGER_MODE) {
           Serial.println("Transfer completed");
         }
-        resetEncoderCount(); // Reference encoder count
       break;
       default:
       if (DEBUGGER_MODE) {
