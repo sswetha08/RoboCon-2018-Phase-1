@@ -232,7 +232,7 @@ class ThreeWheelBotMotors {
       setMotorPWM(1, MOTOR_MAG[1] + PWMCorrection);
       setMotorPWM(2, MOTOR_MAG[2] + PWMCorrection);
       prevErrorBWD = errorBWD;
-    }    
+    }
 };
 
 ThreeWheelBotMotors motors;
@@ -285,11 +285,11 @@ void setup() {
       400 : 3.8,1.4;2.0,0.6
 
     */
-  motors.setFWD_PDparameters(3.8,1.4);
-  motors.setBWD_PDparameters(2,0.6);
+  motors.setFWD_PDparameters(1.4,0.1);
+  motors.setBWD_PDparameters(0.7,0.2);
 }
 
-int CURRENT_ANGLE = 0, CURRENT_PWM = 400;
+int CURRENT_ANGLE = 0, CURRENT_PWM = 150;
 void loop() {
   while (Serial.available()) {  // For Debugger mode
     char c = Serial.read();
@@ -307,13 +307,14 @@ void loop() {
   GrabLSAValues();
   DisplayLSAValues();
   // Move Bot
-
+  motors.moveAtWithAngle(CURRENT_PWM,CURRENT_ANGLE);
   /*
   motors.moveAtWithAngle(CURRENT_PWM, CURRENT_ANGLE);
   motors.applyXAxisMotionCorrection(LSA_Values,lastLSA_Values);
   // motors.setMotorStatus(0,0,0);
   motors.printMotorStatus();
   */
+  motors.applyXAxisMotionCorrection(LSA_Values,lastLSA_Values);
 }
 
 // LSA Codes

@@ -20,10 +20,11 @@
 // True or False
 #define DEBUGGER_MODE true
 
-
 #include<Servo.h>
 
 volatile long encoderCount = 0, tempEncoderCount = 0;
+// IR LEDs
+int IRs[7] = {53,51,49,47,45,43,41};
 Servo flapServo;
 
 void setup() {
@@ -42,6 +43,11 @@ void setup() {
   retractFlap();
   openArmGripper();
   digitalWrite(MOTOR_DIR_PIN, HIGH);
+  // IR Arc
+  for (int i = 0 ; i < 7 ; i++) {
+    pinMode(IRs[i], OUTPUT);
+    digitalWrite(IRs[i], LOW);
+  }
 }
 
 void resetEncoderCount() {
@@ -61,6 +67,7 @@ void encoderTicked() {
   }
 }
 void PerformFlapServoDeployAction() { // Perform the receiving action (not the gripping)
+  retractFlap();  // Get the flap out of the way (if it's coming in the middle)
   digitalWrite(MOTOR_DIR_PIN, !MOTOR_THROW_VOLTAGE_LEVEL);  // Reverse the direction. Rotate in the CCW when seen from LSA 3 side
   analogWrite(MOTOR_PWM_PIN, 40); // Rotate (in the opposite direction)
   while(digitalRead(PHOTOELECTRIC_SENSOR_PIN) == LOW) {
@@ -106,6 +113,7 @@ void closeArmGripper() {  // Close the arm gripper
 }
 
 void loop() {
+  // az700fz500m120d0i2z1000m0d0
   if (tempEncoderCount != encoderCount) {
     if (DEBUGGER_MODE) {
       printEncoderTicks();
@@ -124,13 +132,45 @@ void loop() {
         openArmGripper();
         resetEncoderCount();
       break;
+      case 'i': case 'I': // Trigger IR[i] pin to HIGH
+       del = Serial.parseInt();
+       //
+       // while(abs(encoderCount) <= 800) {
+       //   Serial.println("Waiting for 800 ticks");
+       // }
+       delay(3000);
+       digitalWrite(IRs[del], HIGH);
+       if (DEBUGGER_MODE) {
+         Serial.print("IR ");
+         Serial.print(del);
+         Serial.print(" turned on");
+       }
+       delay(3000);
+       // while(abs(encoderCount) <= 1600) {
+       //   Serial.println("Waiting for 1600 ticks");
+       // }
+
+       digitalWrite(IRs[del], LOW);
+     break;
+      case 'p':case 'P':
+      del = Serial.parseInt();
+      digitalWrite(IRs[del], HIGH);
+      if (DEBUGGER_MODE) {
+        Serial.print("IR ");
+        Serial.print(del);
+        Serial.print(" turned on");
+      }
+      del = Serial.parseInt();
+      delay(del);
+      digitalWrite(IRs[del], LOW);
+      break;
       case 't':case 'T':  // Throwing point set
         del = Serial.parseInt();  // The count threshold
         if (DEBUGGER_MODE) {
           Serial.print("Encoder and gripper threshold set to ");
           Serial.println(del);
         }
-        while(encoderCount < del) {
+        while(abs(encoderCount) < del) {
           printEncoderTicks();
         }
         openArmGripper();
