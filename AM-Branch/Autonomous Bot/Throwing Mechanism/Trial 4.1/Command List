@@ -1,17 +1,22 @@
 r -> Only deploy position (No sensor check and stuff) --- Debugger ONLY
-i<num> -> Trigger the IR[num] after 3 seconds ON, stay ON for 3 seconds and then turn off
-p<num> -> Turn ON the IR[num]
-l<num> -> Turn OFF the IR[num]
+i<num> -> Trigger the IR[num] after 3 seconds ON, stay ON for 3 seconds and then turn off  
+p<num> -> Turn ON the IR[num]  ---debugger
+l<num> -> Turn OFF the IR[num]  -----debugger
 t<num> -> Set the encoder threshold to 'num'. The 0 is after the receive position, after 'num' ticks of the encoder, open gripper
-o -> Open gripper on the throwing arm
-c -> Close gripper on the throwing arm
+o -> Open gripper on the throwing arm   --debugger
+c -> Close gripper on the throwing arm  ---debbuger
 m<pwm> -> Actuate the throwing arm motor at 'pwm' in the throwing direction.
 	It also opens flap before actuation, but it's suggested to use f and then a z500. 
 d<0 or 1> -> Toggle the direction of rotation (move the motor in the direction opposite to the throwing direction), use m<pwm> before this.
 	0 will set direction to opposite to throwing sense and 1 will set rotation to throwing direction.
-f -> Retract flap servo 
+f -> Retract flap servo  
 g -> Deploy flap servo
 z<num> -> Hault all execution for 'num' milliseconds
-a (or e) -> Home position (with the sensor work)
+a (or e) -> Home position (with the sensor work)   -----transfer, start receiving 
+//Send 'G' from TM to MC after gripping is done
+//Send 'R', 'B' 'Y' from Lattepanda to MC
+//Send 'T' from TM to MC after throwing is done
 
+// After gripping and when reached the TP of TZ1
+// Send "fz500m150d1i3z500m0"
 
