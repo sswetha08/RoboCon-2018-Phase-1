@@ -7,7 +7,7 @@
 int rfrequency = 0;
 int gfrequency = 0;
 int bfrequency = 0;
-int r,g,b;
+long r,g,b;
 int cnt=0;
 
 void setup() {
@@ -55,7 +55,7 @@ void loop()
   Serial.print(bfrequency);//printing RED color frequency
   Serial.println("  ");
   
-  if(cnt%100!=0)
+  if(cnt<=100)
   {
    r+=rfrequency;
    g+=gfrequency;
@@ -76,6 +76,7 @@ void loop()
    r=0;
    g=0;
    b=0;
+   cnt=0;
   }
   cnt++;
   rfrequency=0;
