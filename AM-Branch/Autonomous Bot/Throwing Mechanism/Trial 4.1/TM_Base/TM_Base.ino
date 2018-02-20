@@ -269,8 +269,9 @@ void loop() {
             }
           }
         }
+        Serial.print("G");  // G after gripping is done
         if (DEBUGGER_MODE) {
-          Serial.println("Transfer completed");
+          Serial.println("\nTransfer completed");
         }
       break;
       default:
@@ -424,8 +425,9 @@ void loop() {
             }
           }
         }
+        CMD_SERIAL.print("G");  // Send a G when gripping is done
         if (DEBUGGER_MODE) {
-          Serial.println("Transfer completed");
+          Serial.println("\nTransfer completed");
         }
       break;
       default:
