@@ -10,8 +10,8 @@ int IR_recv = 2;
 
 void setup()
 {
-  Serial.begin(9600);
-  Serial.println("Hello World");
+  //Serial.begin(9600);
+  //Serial.println("Hello World");
   btserial.begin(38400);
   pinMode(13, OUTPUT);
   pinMode(IR_recv, INPUT);
@@ -38,7 +38,7 @@ void loop()
   if (btserial.available())
   {
     char c = btserial.read();
-    Serial.println(c);
+    //Serial.println(c);
     if (c == 'x')
     {
       ser.write(open_pos);
