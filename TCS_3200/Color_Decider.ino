@@ -24,9 +24,9 @@ void RGB_Sensor_Response()
   gfrequency = pulseIn(sensorOut, LOW);
   RGB_Sensor_Out(0, 1);
   bfrequency = pulseIn(sensorOut, LOW);
-  dr = rfrequency - 118.38;
-  dg = gfrequency - 474.8;
-  db = bfrequency - 399.73;
+  dr = rfrequency - 180;
+  dg = gfrequency - 650;
+  db = bfrequency - 710;
   var_red = sqrt(dr * dr + db * db + dg * dg);
 
 }
@@ -48,8 +48,11 @@ void setup()
 void loop() 
 {
   RGB_Sensor_Response();
-  if (var_red < 50)
+  if (var_red < 200)
   {
     Serial.println("RED");
   }
+  else
+  Serial.println("NOTHING");
+  
 }
